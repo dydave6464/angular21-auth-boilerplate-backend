@@ -48,7 +48,7 @@ All routes are prefixed with `/accounts`. Full schemas in
 git clone https://github.com/dydave6464/angular21-auth-boilerplate-backend.git
 cd angular21-auth-boilerplate-backend
 npm install
-cp .env.example .env     # then fill in real values (see below)
+# create a .env file at the repo root with the variables listed below
 npm run dev              # nodemon, restarts on changes
 # or:
 npm start

@@ -194,6 +194,7 @@ async function getAccount(id) {
 }
 
 async function getRefreshToken(token) {
+    if (!token) throw 'Invalid token';
     const refreshToken = await db.RefreshToken.findOne({ where: { token } });
     if (!refreshToken || !refreshToken.isActive()) throw 'Invalid token';
     return refreshToken;

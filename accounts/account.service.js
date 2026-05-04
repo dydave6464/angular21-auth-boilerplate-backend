@@ -73,8 +73,12 @@ async function revokeToken({ token, ipAddress }) {
 
 async function register(params, origin) {
     if (await db.Account.findOne({ where: { email: params.email } })) {
-        // never reveal that the email is already taken — just send a "you already have an account" email
-        return await sendAlreadyRegisteredEmail(params.email, origin);
+        // never reveal that the email is already taken — fire-and-forget the
+        // "you already have an account" email so the response isn't blocked by SMTP
+        sendAlreadyRegisteredEmail(params.email, origin).catch((err) =>
+            console.error('Failed to send already-registered email:', err)
+        );
+        return;
     }
 
     const account = new db.Account(params);
@@ -87,7 +91,10 @@ async function register(params, origin) {
 
     await account.save();
 
-    await sendVerificationEmail(account, origin);
+    // fire-and-forget verification email so a slow/blocked SMTP doesn't hang the request
+    sendVerificationEmail(account, origin).catch((err) =>
+        console.error('Failed to send verification email:', err)
+    );
 }
 
 async function verifyEmail({ token }) {
@@ -108,7 +115,10 @@ async function forgotPassword({ email }, origin) {
     account.resetTokenExpires = new Date(Date.now() + 24 * 60 * 60 * 1000);
     await account.save();
 
-    await sendPasswordResetEmail(account, origin);
+    // fire-and-forget so a slow/blocked SMTP doesn't hang the request
+    sendPasswordResetEmail(account, origin).catch((err) =>
+        console.error('Failed to send password reset email:', err)
+    );
 }
 
 async function validateResetToken({ token }) {

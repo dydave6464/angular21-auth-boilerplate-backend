@@ -11,6 +11,10 @@ async function sendEmail({ to, subject, html, from = process.env.EMAIL_FROM }) {
         auth: process.env.SMTP_USER
             ? { user: process.env.SMTP_USER, pass: process.env.SMTP_PASS }
             : undefined,
+        // fail fast on flaky outbound (e.g. Render free-tier ↔ Ethereal)
+        connectionTimeout: 10000,
+        greetingTimeout: 10000,
+        socketTimeout: 10000,
     });
 
     const info = await transporter.sendMail({ from, to, subject, html });

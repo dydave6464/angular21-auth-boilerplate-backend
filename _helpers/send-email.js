@@ -1,28 +1,25 @@
-const nodemailer = require('nodemailer');
+const sgMail = require('@sendgrid/mail');
 
 module.exports = sendEmail;
 
+// Uses SendGrid's HTTPS API (port 443) instead of SMTP — Render free-tier
+// reliably blocks outbound SMTP but allows HTTPS, so this is the only
+// reliable path to email delivery from a free Render service.
 async function sendEmail({ to, subject, html, from = process.env.EMAIL_FROM }) {
-    const transporter = nodemailer.createTransport({
-        host: process.env.SMTP_HOST,
-        port: parseInt(process.env.SMTP_PORT || '587', 10),
-        // STARTTLS on 587, SMTPS on 465
-        secure: parseInt(process.env.SMTP_PORT || '587', 10) === 465,
-        auth: process.env.SMTP_USER
-            ? { user: process.env.SMTP_USER, pass: process.env.SMTP_PASS }
-            : undefined,
-        // fail fast on flaky outbound (e.g. Render free-tier ↔ Ethereal)
-        connectionTimeout: 10000,
-        greetingTimeout: 10000,
-        socketTimeout: 10000,
-    });
-
-    const info = await transporter.sendMail({ from, to, subject, html });
-
-    // Ethereal exposes a preview URL — handy when SMTP creds aren't real.
-    const previewUrl = nodemailer.getTestMessageUrl(info);
-    if (previewUrl) {
-        console.log('Email preview URL:', previewUrl);
+    if (!process.env.SENDGRID_API_KEY) {
+        throw new Error('SENDGRID_API_KEY is not set');
     }
-    return info;
+    sgMail.setApiKey(process.env.SENDGRID_API_KEY);
+
+    const msg = { to, from, subject, html };
+
+    try {
+        const [response] = await sgMail.send(msg);
+        console.log(`Email sent to ${to} (status ${response.statusCode})`);
+        return response;
+    } catch (err) {
+        // SendGrid attaches structured error info on .response.body
+        console.error('SendGrid send error:', err.response?.body || err.message);
+        throw err;
+    }
 }

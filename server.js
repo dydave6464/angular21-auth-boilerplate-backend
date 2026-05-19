@@ -17,9 +17,20 @@ app.use(express.urlencoded({ extended: true }));
 app.use(cookieParser());
 
 // CORS — must be a specific origin (no '*') because we send credentials.
+// CORS_ORIGIN can be a single origin or a comma-separated list (e.g. prod + localhost dev).
+const allowedOrigins = (process.env.CORS_ORIGIN || '')
+    .split(',')
+    .map((o) => o.trim())
+    .filter(Boolean);
+
 app.use(
     cors({
-        origin: process.env.CORS_ORIGIN,
+        origin: (origin, callback) => {
+            // allow non-browser requests (curl, server-to-server) with no Origin header
+            if (!origin) return callback(null, true);
+            if (allowedOrigins.includes(origin)) return callback(null, true);
+            return callback(new Error(`CORS: origin ${origin} not allowed`));
+        },
         credentials: true,
     })
 );
